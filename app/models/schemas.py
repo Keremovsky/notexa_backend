@@ -23,3 +23,11 @@ class Token(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+
+class ChatInput(BaseModel):
+    prompt: str
+
+
+class ChatOutput(BaseModel):
+    answer: str
