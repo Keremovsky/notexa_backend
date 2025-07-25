@@ -24,6 +24,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db_models.User(
         username=user.username, email=user.email, hashed_password=hashed_pw
     )
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -31,9 +32,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
-):
+def login(form_data: schemas.UserLogin, db: Session = Depends(get_db)):
     user = (
         db.query(db_models.User)
         .filter(db_models.User.username == form_data.username)
@@ -53,9 +52,10 @@ def login(
     db.commit()
 
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
+        "username": user.username,
+        "email": user.email,
+        "refresh": refresh_token,
+        "access": access_token,
     }
 
 
@@ -81,7 +81,7 @@ def refresh_token(token_data: TokenRefreshRequest, db: Session = Depends(get_db)
 
     # issue new access token
     new_access_token = security.create_access_token(data={"sub": user.username})
-    return {"access_token": new_access_token, "token_type": "bearer"}
+    return {"access": new_access_token}
 
 
 @router.post("/logout")
