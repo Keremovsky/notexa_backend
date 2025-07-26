@@ -36,3 +36,11 @@ class ChatInput(BaseModel):
 
 class ChatOutput(BaseModel):
     answer: str
+
+
+class DocumentOut(BaseModel):
+    id: int
+    filename: str
+
+    class Config:
+        orm_mode = True

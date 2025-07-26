@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm
 from models import schemas, db_models
 from db.session import get_db
 from core import security
@@ -43,8 +42,8 @@ def login(form_data: schemas.UserLogin, db: Session = Depends(get_db)):
     ):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    access_token = security.create_access_token(data={"sub": user.username})
-    refresh_token = security.create_refresh_token(data={"sub": user.username})
+    access_token = security.create_access_token(data={"sub": str(user.id)})
+    refresh_token = security.create_refresh_token(data={"sub": str(user.id)})
 
     # store refresh token
     db_token = db_models.RefreshToken(token=refresh_token, user_id=user.id)
@@ -80,7 +79,7 @@ def refresh_token(token_data: TokenRefreshRequest, db: Session = Depends(get_db)
         raise HTTPException(status_code=403, detail="Token not recognized")
 
     # issue new access token
-    new_access_token = security.create_access_token(data={"sub": user.username})
+    new_access_token = security.create_access_token(data={"sub": str(user.id)})
     return {"access": new_access_token}
 
 

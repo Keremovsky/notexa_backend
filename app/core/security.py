@@ -41,5 +41,6 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
 def verify_token(token: str) -> Optional[dict]:
     try:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except JWTError:
+    except JWTError as e:
+        print(e)
         return None
