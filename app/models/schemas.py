@@ -35,6 +35,7 @@ class ChatInput(BaseModel):
 
 
 class ChatOutput(BaseModel):
+    sender: str
     answer: str
 
 
