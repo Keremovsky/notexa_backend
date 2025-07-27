@@ -14,8 +14,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
 
     tokens = relationship("RefreshToken", back_populates="user")
-    chats = relationship("ChatHistory", back_populates="user")
-    documents = relationship("Document", back_populates="user", cascade="all, delete")
+    workspaces = relationship("Workspace", back_populates="user")
 
 
 class RefreshToken(Base):
@@ -35,6 +34,19 @@ class ChatModeEnum(PyEnum):
     chat = "chat"
 
 
+class Workspace(Base):
+    __tablename__ = "workspace"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="workspace")
+    document = relationship("Document", back_populates="workspace")
+
+
 class ChatHistory(Base):
     __tablename__ = "chat_history"
 
@@ -45,13 +57,13 @@ class ChatHistory(Base):
 
     chat_mode = Column(Enum(ChatModeEnum), nullable=False, index=True)
 
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     document_id = Column(Integer, ForeignKey("documents.id", ondelete="SET NULL"))
+    note_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"))
 
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
-    user = relationship("User", back_populates="chats")
-    document = relationship("Document", back_populates="chats")
+    document = relationship("Document", back_populates="chat")
+    note = relationship("Note", back_populates="chat")
 
 
 class Document(Base):
@@ -62,7 +74,21 @@ class Document(Base):
     file_path = Column(String, nullable=False)  # e.g., "/uploads/user_123/myfile.pdf"
     upload_time = Column(DateTime, default=datetime.now(timezone.utc))
 
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    workspace_id = Column(Integer, ForeignKey("workspace.id", ondelete="CASCADE"))
 
-    user = relationship("User", back_populates="documents")
-    chats = relationship("ChatHistory", back_populates="document")
+    chat = relationship("ChatHistory", back_populates="document", uselist=False)
+    workspace = relationship("Workspace", back_populates="document")
+    notes = relationship("Notes", back_populates="document")
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True, default="")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"))
+
+    document = relationship("Document", back_populates="notes")
+    chat = relationship("ChatHistory", back_populates="notes", uselist=False)

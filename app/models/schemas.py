@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import List
 
 
 class UserCreate(BaseModel):
@@ -39,9 +40,37 @@ class ChatOutput(BaseModel):
     answer: str
 
 
-class DocumentOut(BaseModel):
+class WorkspaceCreate(BaseModel):
+    name: str
+
+
+class WorkspaceOut(BaseModel):
     id: int
-    filename: str
+    name: str
 
     class Config:
         orm_mode = True
+
+
+class WorkspaceListOut(BaseModel):
+    workspaces: List[WorkspaceOut]
+
+
+class NoteAdd(BaseModel):
+    doc: int
+    title: str
+
+
+class NoteOut(BaseModel):
+    id: int
+    title: str
+
+
+class DocumentOut(BaseModel):
+    id: int
+    name: str
+    notes: List[NoteOut]
+
+
+class DocumentListOut(BaseModel):
+    docs: List[DocumentOut]
