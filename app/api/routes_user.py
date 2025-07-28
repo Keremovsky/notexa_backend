@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from app.utils.user_utils import get_current_user
 from models import schemas, db_models
 from db.session import get_db
+from models.db_models import User
 from core import security
 from models.schemas import TokenRefreshRequest
 
@@ -84,13 +86,27 @@ def refresh_token(token_data: TokenRefreshRequest, db: Session = Depends(get_db)
 
 
 @router.post("/logout")
-def logout(token_data: TokenRefreshRequest, db: Session = Depends(get_db)):
+def logout(
+    token_data: TokenRefreshRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db_token = (
+        db.query(db_models.RefreshToken)
+        .filter(db_models.RefreshToken.user_id == current_user.id)
+        .first()
+    )
+
+    if not (db_token.token == token_data.refresh_token):
+        raise HTTPException(status_code=401, detail="No permission for logout")
+
     deleted = (
         db.query(db_models.RefreshToken)
         .filter_by(token=token_data.refresh_token)
         .delete()
     )
     db.commit()
+
     if not deleted:
         raise HTTPException(status_code=404, detail="Token not found")
     return {"detail": "Logged out"}

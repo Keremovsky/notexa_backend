@@ -4,9 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 import shutil
 import os
 from uuid import uuid4
-from typing import List
 from fastapi.responses import StreamingResponse
-from sqlalchemy.sql.sqltypes import DATETIME_TIMEZONE
 from starlette.status import HTTP_204_NO_CONTENT
 
 from app.models import db_models
@@ -14,10 +12,10 @@ from models.db_models import User, Document
 from db.session import get_db
 from utils.user_utils import get_current_user
 from models.schemas import (
+    DocumentListOut,
     DocumentOut,
     NoteAdd,
     WorkspaceCreate,
-    DocumentListOut,
     NoteOut,
     WorkspaceListOut,
     WorkspaceOut,
@@ -69,7 +67,7 @@ async def get_workspace(
                 notes=[NoteOut(id=note.id, title=note.title) for note in doc.notes],
             )
             for doc in workspace.document
-        ]
+        ],
     )
 
 
