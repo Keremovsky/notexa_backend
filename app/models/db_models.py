@@ -13,8 +13,8 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
-    tokens = relationship("RefreshToken", back_populates="user")
-    workspaces = relationship("Workspace", back_populates="user")
+    token = relationship("RefreshToken", back_populates="user", uselist=False)
+    workspace = relationship("Workspace", back_populates="user")
 
 
 class RefreshToken(Base):
@@ -25,13 +25,7 @@ class RefreshToken(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
-    user = relationship("User", back_populates="tokens")
-
-
-class ChatModeEnum(PyEnum):
-    role = "role"
-    tutor = "tutor"
-    chat = "chat"
+    user = relationship("User", back_populates="token")
 
 
 class Workspace(Base):
@@ -45,6 +39,12 @@ class Workspace(Base):
 
     user = relationship("User", back_populates="workspace")
     document = relationship("Document", back_populates="workspace")
+
+
+class ChatModeEnum(PyEnum):
+    role = "role"
+    tutor = "tutor"
+    chat = "chat"
 
 
 class ChatHistory(Base):
@@ -78,7 +78,7 @@ class Document(Base):
 
     chat = relationship("ChatHistory", back_populates="document", uselist=False)
     workspace = relationship("Workspace", back_populates="document")
-    notes = relationship("Notes", back_populates="document")
+    notes = relationship("Note", back_populates="document")
 
 
 class Note(Base):
@@ -91,4 +91,4 @@ class Note(Base):
     document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"))
 
     document = relationship("Document", back_populates="notes")
-    chat = relationship("ChatHistory", back_populates="notes", uselist=False)
+    chat = relationship("ChatHistory", back_populates="note", uselist=False)

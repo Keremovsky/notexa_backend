@@ -14,12 +14,10 @@ class UserLogin(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: int
     username: str
     email: EmailStr
-
-    class Config:
-        orm_mode = True
+    refresh: str
+    access: str
 
 
 class Token(BaseModel):

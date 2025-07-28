@@ -7,7 +7,7 @@ from uuid import uuid4
 from fastapi.responses import StreamingResponse
 from starlette.status import HTTP_204_NO_CONTENT
 
-from app.models import db_models
+from models import db_models
 from models.db_models import User, Document
 from db.session import get_db
 from utils.user_utils import get_current_user
@@ -81,9 +81,6 @@ async def get_workspaces(
         .filter(db_models.Workspace.user_id == current_user.id)
         .all()
     )
-
-    if not workspaces:
-        raise HTTPException(status_code=404, detail="No workspace found")
 
     return WorkspaceListOut(
         workspaces=[WorkspaceOut.model_validate(workspace) for workspace in workspaces]
@@ -196,10 +193,10 @@ async def removeDocument(
 @router.post("/notes")
 async def add_note(
     note_add: NoteAdd,
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    db_note = db_models.Note(document_id=NoteAdd.doc, title=NoteAdd.title)
+    db_note = db_models.Note(document_id=note_add.doc, title=note_add.title)
 
     db.add(db_note)
     db.commit()
@@ -211,7 +208,7 @@ async def add_note(
 @router.delete("notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_note(
     note_id: int,
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     db_note = db.query().filter(db_models.Note.id == note_id).first()
