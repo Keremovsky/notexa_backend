@@ -5,7 +5,7 @@ import shutil
 import os
 from uuid import uuid4
 from fastapi.responses import StreamingResponse
-from starlette.status import HTTP_204_NO_CONTENT
+from starlette.status import HTTP_200_OK, HTTP_204_NO_CONTENT
 
 from models import db_models
 from models.db_models import User, Document
@@ -40,10 +40,26 @@ async def create_workspace(
     db.commit()
     db.refresh(db_workspace)
 
-    return db_workspace
+    return {}
 
 
-@router.post("/{workspace_id}")
+@router.get("/all")
+async def get_workspaces(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    workspaces = (
+        db.query(db_models.Workspace)
+        .filter(db_models.Workspace.user_id == current_user.id)
+        .all()
+    )
+
+    return WorkspaceListOut(
+        workspaces=[WorkspaceOut.model_validate(workspace) for workspace in workspaces]
+    )
+
+
+@router.get("/{workspace_id}")
 async def get_workspace(
     workspace_id: int,
     _: User = Depends(get_current_user),
@@ -51,7 +67,11 @@ async def get_workspace(
 ):
     workspace = (
         db.query(db_models.Workspace)
-        .options(joinedload(db_models.Workspace.document).joinedload(lambda d: d.notes))
+        .options(
+            joinedload(db_models.Workspace.document).joinedload(
+                db_models.Document.notes
+            )
+        )
         .filter(db_models.Workspace.id == workspace_id)
         .first()
     )
@@ -68,22 +88,6 @@ async def get_workspace(
             )
             for doc in workspace.document
         ],
-    )
-
-
-@router.get("/all")
-async def get_workspaces(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    workspaces = (
-        db.query(db_models.Workspace)
-        .filter(db_models.Workspace.user_id == current_user.id)
-        .all()
-    )
-
-    return WorkspaceListOut(
-        workspaces=[WorkspaceOut.model_validate(workspace) for workspace in workspaces]
     )
 
 
