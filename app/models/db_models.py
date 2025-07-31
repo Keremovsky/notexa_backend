@@ -53,7 +53,7 @@ class ChatHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # Structured messages: [{"sender": "user"|"ai", "text": "..."}]
-    messages = Column(JSON, nullable=False)
+    messages = Column(JSON)
 
     chat_mode = Column(Enum(ChatModeEnum), nullable=False, index=True)
 
