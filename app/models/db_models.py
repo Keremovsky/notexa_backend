@@ -86,6 +86,7 @@ class Note(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True, default="")
+    content = Column(String, index=True, default="")
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
     document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"))

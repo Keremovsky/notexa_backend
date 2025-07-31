@@ -158,17 +158,12 @@ async def upload_document(
 @router.get("/documents/{document_id}/file")
 def get_document_file(
     document_id: int,
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     document = db.query(Document).filter(Document.id == document_id).first()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-
-    if document.user_id != current_user.id:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to access this document"
-        )
 
     file_path = document.file_path
     if not os.path.isfile(file_path):
@@ -182,7 +177,11 @@ def get_document_file(
 async def removeDocument(
     document_id: int, _: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    db_document = db.query().filter(db_models.Document.id == document_id).first()
+    db_document = (
+        db.query(db_models.Document)
+        .filter(db_models.Document.id == document_id)
+        .first()
+    )
 
     if not db_document:
         raise HTTPException(status_code=404, detail="Document is not found")
@@ -192,6 +191,20 @@ async def removeDocument(
 
 
 # NOTES
+
+
+@router.get("/notes/{note_id}")
+async def get_note(
+    note_id: int,
+    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db_note = db.query(db_models.Note).filter(db_models.Note.id == note_id).first()
+
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Note is not found")
+
+    return {"content": db_note.content}
 
 
 @router.post("/notes")
@@ -209,13 +222,13 @@ async def add_note(
     return db_note
 
 
-@router.delete("notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_note(
     note_id: int,
     _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    db_note = db.query().filter(db_models.Note.id == note_id).first()
+    db_note = db.query(db_models.Note).filter(db_models.Note.id == note_id).first()
 
     if not db_note:
         raise HTTPException(status_code=404, detail="Note not found")
