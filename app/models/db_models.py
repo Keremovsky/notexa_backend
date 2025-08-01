@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
+from sqlalchemy.ext.mutable import MutableList
 from db.session import Base
 from enum import Enum as PyEnum
 
@@ -53,7 +54,7 @@ class ChatHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # Structured messages: [{"sender": "user"|"ai", "text": "..."}]
-    messages = Column(JSON)
+    messages = Column(MutableList.as_mutable(JSON), default=list)
 
     chat_mode = Column(Enum(ChatModeEnum), nullable=False, index=True)
 

@@ -31,11 +31,14 @@ class TokenRefreshRequest(BaseModel):
 
 class ChatInput(BaseModel):
     prompt: str
+    id: int
+    tp: str
+    mode: str
 
 
 class ChatOutput(BaseModel):
     sender: str
-    answer: str
+    text: str
 
 
 class WorkspaceCreate(BaseModel):
