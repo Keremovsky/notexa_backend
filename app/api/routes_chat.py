@@ -105,3 +105,36 @@ async def chat_stream_endpoint(
         db.commit()
 
     return StreamingResponse(wrapped_stream(), media_type="text/event-stream")
+
+
+@router.delete("/clear/{component_id}")
+async def clear_chat_history(
+    component_id: int,
+    tp: str,
+    mode: str,
+    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if tp not in ("document", "note"):
+        raise HTTPException(status_code=400, detail="Invalid component type")
+
+    filter_field = (
+        db_models.ChatHistory.document_id
+        if tp == "document"
+        else db_models.ChatHistory.note_id
+    )
+
+    chat = (
+        db.query(db_models.ChatHistory)
+        .filter(filter_field == component_id)
+        .filter(db_models.ChatHistory.chat_mode == mode)
+        .first()
+    )
+
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat history not found")
+
+    chat.messages = []
+    db.commit()
+
+    return {"detail": "Chat history cleared"}
