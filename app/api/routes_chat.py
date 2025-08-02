@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.messages import HumanMessage, AIMessage
 
 import asyncio
@@ -82,12 +84,18 @@ async def websocket_chat(
             await websocket.close()
             return
 
-        conversation, memory = initialize_chain(db_chat)
+        conversation, memory = initialize_chain(db_chat, chat_input.mode)
+
+        # embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+        # vector_store = InMemoryVectorStore.from_documents(doc_texts, embeddings)
 
         while True:
             user_input = await websocket.receive_text()
             memory.chat_memory.add_message(HumanMessage(content=user_input))
             full_tokens = []
+
+            # get most related 10 pages from pdf file
+            # docs = vector_store.similarity_search(user_input, k=10)
 
             async for chunk in conversation.llm.astream(memory.chat_memory.messages):
                 token = chunk.content
