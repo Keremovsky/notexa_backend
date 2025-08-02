@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.websockets import WebSocket, WebSocketDisconnect
+from langchain_core.documents import Document
 from sqlalchemy.orm import Session
 
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 import asyncio
 import json
@@ -59,6 +60,9 @@ async def get_chat(
     }
 
 
+embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+
+
 @router.websocket("/stream")
 async def websocket_chat(
     websocket: WebSocket,
@@ -80,24 +84,60 @@ async def websocket_chat(
 
         doc_texts, note_texts, error = await load_context(chat_input, db)
         if error:
+            print(error)
             await websocket.send_json({"error": error})
             await websocket.close()
             return
 
         conversation, memory = initialize_chain(db_chat, chat_input.mode)
 
-        # embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-        # vector_store = InMemoryVectorStore.from_documents(doc_texts, embeddings)
+        try:
+            doc_documents = [Document(page_content=text) for text in doc_texts]
+            doc_vectorstore = InMemoryVectorStore.from_documents(
+                doc_documents, embeddings
+            )
+            note_documents = [Document(page_content=text) for text in note_texts]
+            note_vectorstore = InMemoryVectorStore.from_documents(
+                note_documents, embeddings
+            )
+        except Exception as e:
+            print(e)
+            await websocket.send_json({"error": f"Embedding failed: {str(e)}"})
+            await websocket.close()
+            return
+
+        # get most related 3 pages from pdf file
+        doc_retrivier = doc_vectorstore.as_retriever(k=3)
+        note_retrivier = note_vectorstore.as_retriever(k=3)
 
         while True:
             user_input = await websocket.receive_text()
+
+            docs = doc_retrivier.invoke(user_input)
+            doc_context = "\n\n".join([doc.page_content for doc in docs])
+
+            notes = note_retrivier.invoke(user_input)
+            note_context = "\n\n".join([note.page_content for note in notes])
+
+            messages = memory.chat_memory.messages
+            doc_system_message = SystemMessage(
+                content=f"Here are some relevant documents:\n{doc_context}"
+            )
+            note_system_message = SystemMessage(
+                content=f"Here are some relevant notes from user:\n{note_context}"
+            )
+
+            full_prompt_messages = (
+                [doc_system_message, note_system_message]
+                + messages
+                + [HumanMessage(content=user_input)]
+            )
+
             memory.chat_memory.add_message(HumanMessage(content=user_input))
+
             full_tokens = []
 
-            # get most related 10 pages from pdf file
-            # docs = vector_store.similarity_search(user_input, k=10)
-
-            async for chunk in conversation.llm.astream(memory.chat_memory.messages):
+            async for chunk in conversation.llm.astream(full_prompt_messages):
                 token = chunk.content
                 full_tokens.append(token)
                 await websocket.send_text(token)
