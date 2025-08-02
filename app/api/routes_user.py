@@ -65,7 +65,7 @@ def login(form_data: schemas.UserLogin, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/refresh", response_model=schemas.Token)
+@router.post("/refresh")
 def refresh_token(token_data: TokenRefreshRequest, db: Session = Depends(get_db)):
     payload = security.verify_token(token_data.refresh_token)
     if not payload:

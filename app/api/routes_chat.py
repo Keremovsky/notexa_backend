@@ -1,12 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.websockets import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
+
+from langchain_core.messages import HumanMessage, AIMessage
+
+import asyncio
+import json
+
 from models import db_models
-from services.langchain_agent import stream_chat_response_json
+from services.langchain_agent import initialize_chain
 from models.schemas import ChatInput, ChatOutput
 from models.db_models import User
 from utils.user_utils import get_current_user
 from db.session import get_db
+from utils.chat_utils import load_context, get_or_create_chat_history
 
 router = APIRouter()
 
@@ -50,61 +57,62 @@ async def get_chat(
     }
 
 
-@router.post("/stream")
-async def chat_stream_endpoint(
-    chat_input: ChatInput,
-    _: User = Depends(get_current_user),
+@router.websocket("/stream")
+async def websocket_chat(
+    websocket: WebSocket,
     db: Session = Depends(get_db),
 ):
-    tp = chat_input.tp
-    id_ = chat_input.id
-    mode = chat_input.mode
+    await websocket.accept()
 
-    if tp not in ("document", "note"):
-        raise HTTPException(status_code=400, detail="Invalid type")
+    try:
+        # Parse initial input
+        init_data = await websocket.receive_text()
+        chat_input = ChatInput(**json.loads(init_data))
 
-    filter_field = (
-        db_models.ChatHistory.document_id
-        if tp == "document"
-        else db_models.ChatHistory.note_id
-    )
+        if chat_input.tp not in ("document", "note"):
+            await websocket.send_json({"error": "Invalid type"})
+            await websocket.close()
+            return
 
-    db_chat = (
-        db.query(db_models.ChatHistory)
-        .filter(filter_field == id_)
-        .filter(db_models.ChatHistory.chat_mode == mode)
-        .first()
-    )
+        db_chat = get_or_create_chat_history(db, chat_input)
 
-    if not db_chat:
-        db_chat = db_models.ChatHistory(
-            messages=[], chat_mode=mode, **{f"{tp}_id": id_}
-        )
-        db.add(db_chat)
-        db.commit()
-        db.refresh(db_chat)
+        doc_texts, note_texts, error = await load_context(chat_input, db)
+        if error:
+            await websocket.send_json({"error": error})
+            await websocket.close()
+            return
 
-    full_response_tokens = []
+        conversation, memory = initialize_chain(db_chat)
 
-    def collect_token(token: str):
-        full_response_tokens.append(token)
+        while True:
+            user_input = await websocket.receive_text()
+            memory.chat_memory.add_message(HumanMessage(content=user_input))
+            full_tokens = []
 
-    # Create stream generator with token collector
-    stream_gen = stream_chat_response_json(chat_input.prompt, on_token=collect_token)
+            async for chunk in conversation.llm.astream(memory.chat_memory.messages):
+                token = chunk.content
+                full_tokens.append(token)
+                await websocket.send_text(token)
+                await asyncio.sleep(0)
 
-    async def wrapped_stream():
-        async for chunk in stream_gen:
-            yield chunk
+            ai_response = "".join(full_tokens)
+            memory.chat_memory.add_message(AIMessage(content=ai_response))
 
-        # Save both messages after stream ends
-        db_chat.messages.append({"sender": "user", "text": chat_input.prompt})
-        db_chat.messages.append(
-            {"sender": "ai", "text": " ".join(full_response_tokens)}
-        )
-        db.add(db_chat)
-        db.commit()
+            db_chat.messages.extend(
+                [
+                    {"sender": "user", "text": user_input},
+                    {"sender": "ai", "text": ai_response},
+                ]
+            )
+            db.add(db_chat)
+            db.commit()
 
-    return StreamingResponse(wrapped_stream(), media_type="text/event-stream")
+    except WebSocketDisconnect:
+        print("WebSocket disconnected")
+
+    except Exception as e:
+        await websocket.send_text(json.dumps({"error": str(e)}))
+        await websocket.close()
 
 
 @router.delete("/clear/{component_id}")

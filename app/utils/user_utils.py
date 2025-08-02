@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, Header
-from jose import jwt, JWTError
+from jose import JWTError
 from sqlalchemy.orm import Session
 from db.session import get_db
 from models.db_models import User
