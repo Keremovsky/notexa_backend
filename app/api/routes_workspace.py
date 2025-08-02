@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 import shutil
 import os
 from uuid import uuid4
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from starlette.status import HTTP_200_OK, HTTP_204_NO_CONTENT
 
 from models import db_models
@@ -112,6 +112,8 @@ async def delete_workspace(
     db.delete(workspace)
     db.commit()
 
+    return Response(status_code=HTTP_204_NO_CONTENT)
+
 
 # DOCUMENT
 
@@ -186,8 +188,18 @@ async def removeDocument(
     if not db_document:
         raise HTTPException(status_code=404, detail="Document is not found")
 
+    try:
+        if os.path.exists(db_document.file_path):
+            os.remove(db_document.file_path)
+        else:
+            print(f"File not found: {db_document.file_path}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
+
     db.delete(db_document)
     db.commit()
+
+    return Response(status_code=HTTP_204_NO_CONTENT)
 
 
 # NOTES

@@ -22,7 +22,7 @@ async def stream_chat_response_json(
         token = chunk.content
         if on_token:
             on_token(token)
-        chunk = json.dumps({"sender": "ai", "answer": token})
-        yield f"data: {chunk}\n\n"
+        json_dump = json.dumps({"sender": "ai", "answer": token})
+        yield f"data: {json_dump}\n\n"
 
     yield f"data: {json.dumps({'sender': 'ai', 'answer': '[END]'})}\n\n"
