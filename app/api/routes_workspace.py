@@ -15,6 +15,7 @@ from models.schemas import (
     DocumentListOut,
     DocumentOut,
     NoteAdd,
+    NoteUpdate,
     WorkspaceCreate,
     NoteOut,
     WorkspaceListOut,
@@ -247,3 +248,22 @@ async def remove_note(
 
     db.delete(db_note)
     db.commit()
+
+
+@router.put("/notes/{note_id}", status_code=status.HTTP_202_ACCEPTED)
+async def update_note(
+    note_id: int,
+    note_update: NoteUpdate,
+    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db_note = db.query(db_models.Note).filter(db_models.Note.id == note_id).first()
+
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    for field, value in note_update.dict(exclude_unset=True).items():
+        setattr(db_note, field, value)
+
+    db.commit()
+    db.refresh(db_note)

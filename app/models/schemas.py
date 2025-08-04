@@ -62,6 +62,10 @@ class NoteAdd(BaseModel):
     title: str
 
 
+class NoteUpdate(BaseModel):
+    content: str
+
+
 class NoteOut(BaseModel):
     id: int
     title: str
