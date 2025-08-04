@@ -71,7 +71,6 @@ async def websocket_chat(
     await websocket.accept()
 
     try:
-        # Parse initial input
         init_data = await websocket.receive_text()
         chat_input = ChatInput(**json.loads(init_data))
 

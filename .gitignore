@@ -63,5 +63,7 @@ Thumbs.db
 instance/
 .webassets-cache
 
-# 
+# special
 uploads/
+.chroma_store/
+.embedding_model/

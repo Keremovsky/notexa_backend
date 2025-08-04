@@ -5,8 +5,14 @@ import shutil
 import os
 from uuid import uuid4
 from fastapi.responses import StreamingResponse, Response
-from starlette.status import HTTP_200_OK, HTTP_204_NO_CONTENT
+from starlette.status import HTTP_204_NO_CONTENT
 
+from services.chroma_db import (
+    chroma_remove_document,
+    chroma_remove_note,
+    chroma_save_document,
+    chroma_save_note,
+)
 from models import db_models
 from models.db_models import User, Document
 from db.session import get_db
@@ -155,6 +161,8 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
+    await chroma_save_document(doc)
+
     return {"document_id": doc.id}
 
 
@@ -177,7 +185,7 @@ def get_document_file(
 
 
 @router.delete("/documents/{document_id}", status_code=HTTP_204_NO_CONTENT)
-async def removeDocument(
+async def remove_document(
     document_id: int, _: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     db_document = (
@@ -185,6 +193,9 @@ async def removeDocument(
         .filter(db_models.Document.id == document_id)
         .first()
     )
+
+    doc_id = db_document.id
+    note_ids = [note.id for note in doc.notes]
 
     if not db_document:
         raise HTTPException(status_code=404, detail="Document is not found")
@@ -199,6 +210,11 @@ async def removeDocument(
 
     db.delete(db_document)
     db.commit()
+
+    chroma_remove_document(doc_id)
+    if len(note_ids) > 0:
+        for note_id in note_ids:
+            chroma_remove_note(note_id)
 
     return Response(status_code=HTTP_204_NO_CONTENT)
 
@@ -243,14 +259,18 @@ async def remove_note(
 ):
     db_note = db.query(db_models.Note).filter(db_models.Note.id == note_id).first()
 
+    note_id = db_note.id
+
     if not db_note:
         raise HTTPException(status_code=404, detail="Note not found")
 
     db.delete(db_note)
     db.commit()
 
+    chroma_remove_note(note_id)
 
-@router.put("/notes/{note_id}", status_code=status.HTTP_202_ACCEPTED)
+
+@router.put("/notes/{note_id}", status_code=status.HTTP_200_OK)
 async def update_note(
     note_id: int,
     note_update: NoteUpdate,
@@ -267,3 +287,5 @@ async def update_note(
 
     db.commit()
     db.refresh(db_note)
+
+    chroma_save_note(db_note.id, db_note.document_id, note_update.content)

@@ -62,8 +62,8 @@ class ChatHistory(Base):
 
     chat_mode = Column(Enum(ChatModeEnum), nullable=False, index=True)
 
-    document_id = Column(Integer, ForeignKey("documents.id", ondelete="SET NULL"))
-    note_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"))
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"))
+    note_id = Column(Integer, ForeignKey("notes.id", ondelete="CASCADE"))
 
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
