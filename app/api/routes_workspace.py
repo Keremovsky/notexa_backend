@@ -195,7 +195,7 @@ async def remove_document(
     )
 
     doc_id = db_document.id
-    note_ids = [note.id for note in doc.notes]
+    note_ids = [note.id for note in db_document.notes]
 
     if not db_document:
         raise HTTPException(status_code=404, detail="Document is not found")

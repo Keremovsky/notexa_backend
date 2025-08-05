@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from langchain_community.document_loaders import PyPDFLoader
 import os
+from services.chroma_db import chroma_query_documents, chroma_query_notes
 from models.schemas import ChatInput
 
 from models import db_models
@@ -33,7 +33,7 @@ def get_or_create_chat_history(db: Session, chat_input: ChatInput):
     return db_chat
 
 
-async def load_context(chat_input: ChatInput, db: Session):
+def load_context(chat_input: ChatInput, db: Session, user_input: str):
     doc_texts, note_texts = [], []
 
     try:
@@ -42,15 +42,9 @@ async def load_context(chat_input: ChatInput, db: Session):
             if not doc or not os.path.exists(doc.file_path):
                 return [], [], "Document not found or file missing"
 
-            loader = PyPDFLoader(doc.file_path)
-            async for page in loader.alazy_load():
-                doc_texts.append(page.page_content)
+            doc_texts = chroma_query_documents(doc.id, user_input)
 
-            notes = db.query(db_models.Note).filter_by(document_id=doc.id).all()
-            if not notes:
-                return doc_texts, [], None
-
-            note_texts = [n.content for n in notes]
+            note_texts = chroma_query_notes(doc.id, user_input)
 
         elif chat_input.tp == "note":
             note = db.query(db_models.Note).filter_by(id=chat_input.id).first()
@@ -63,9 +57,7 @@ async def load_context(chat_input: ChatInput, db: Session):
             if not doc or not os.path.exists(doc.file_path):
                 return [], [], "Document not found or file missing"
 
-            loader = PyPDFLoader(doc.file_path)
-            async for page in loader.alazy_load():
-                doc_texts.append(page.page_content)
+            doc_texts = chroma_query_documents(doc.id, user_input)
 
     except Exception as e:
         return [], [], f"Failed to load context: {str(e)}"

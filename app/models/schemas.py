@@ -30,8 +30,8 @@ class TokenRefreshRequest(BaseModel):
 
 
 class ChatInput(BaseModel):
-    prompt: str
     id: int
+    prompt: str
     tp: str
     mode: str
 

@@ -86,6 +86,7 @@ def build_memory_from_db(messages: List[dict], mode: str) -> ConversationBufferM
                     "Editor: Act as a critical reviewer of the user’s written content. Give feedback on clarity, accuracy, structure, and style, while helping refine ideas.\n"
                     "Always base your responses on the user's provided materials, and tailor your output to the current mode to enhance the learning experience. "
                     "More detailed information about mode will be given when it is specified."
+                    "Reply user based on the language user is writing."
                 )
             ),
             SystemMessage(_mode_prompts[mode]),
