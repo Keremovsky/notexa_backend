@@ -13,22 +13,39 @@ def get_or_create_chat_history(db: Session, chat_input: ChatInput):
         else db_models.ChatHistory.note_id
     )
 
-    db_chat = (
-        db.query(db_models.ChatHistory)
-        .filter(filter_field == chat_input.id)
-        .filter(db_models.ChatHistory.chat_mode == chat_input.mode)
-        .first()
-    )
-
-    if not db_chat:
-        db_chat = db_models.ChatHistory(
-            messages=[],
-            chat_mode=chat_input.mode,
-            **{f"{chat_input.tp}_id": chat_input.id},
+    if chat_input.feynman:
+        db_chat = (
+            db.query(db_models.ChatHistory)
+            .filter(filter_field == chat_input.id)
+            .filter(db_models.ChatHistory.chat_mode == chat_input.feynman)
+            .first()
         )
-        db.add(db_chat)
-        db.commit()
-        db.refresh(db_chat)
+
+        if not db_chat:
+            db_chat = db_models.ChatHistory(
+                messages=[],
+                chat_mode=chat_input.feynman,
+                **{f"{chat_input.tp}_id": chat_input.id},
+            )
+            db.add(db_chat)
+            db.commit()
+            db.refresh(db_chat)
+    else:
+        db_chat = (
+            db.query(db_models.ChatHistory)
+            .filter(filter_field == chat_input.id)
+            .filter(db_models.ChatHistory.chat_mode == chat_input.mode)
+            .first()
+        )
+        if not db_chat:
+            db_chat = db_models.ChatHistory(
+                messages=[],
+                chat_mode=chat_input.mode,
+                **{f"{chat_input.tp}_id": chat_input.id},
+            )
+            db.add(db_chat)
+            db.commit()
+            db.refresh(db_chat)
 
     return db_chat
 

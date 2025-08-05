@@ -45,7 +45,9 @@ class Workspace(Base):
 class ChatModeEnum(PyEnum):
     chat = "chat"
     role = "role"
-    feynman = "feynman"
+    feynman_child = "feynman_child"
+    feynman_student = "feynman_student"
+    feynman_prof = "feynman_prof"
     debate = "debate"
     cases = "cases"
     reflect = "reflect"

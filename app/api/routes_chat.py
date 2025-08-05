@@ -1,8 +1,8 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.websockets import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 import asyncio
@@ -24,6 +24,7 @@ async def get_chat(
     component_id: int,
     tp: str,
     mode: str,
+    feynman_level: Optional[str] = None,
     _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -36,15 +37,33 @@ async def get_chat(
         else db_models.ChatHistory.note_id
     )
 
-    db_chat = (
-        db.query(db_models.ChatHistory)
-        .filter(filter_field == component_id)
-        .filter(db_models.ChatHistory.chat_mode == mode)
-        .first()
-    )
+    if feynman_level:
+        db_chat = (
+            db.query(db_models.ChatHistory)
+            .filter(filter_field == component_id)
+            .filter(db_models.ChatHistory.chat_mode == feynman_level)
+            .first()
+        )
+    else:
+        db_chat = (
+            db.query(db_models.ChatHistory)
+            .filter(filter_field == component_id)
+            .filter(db_models.ChatHistory.chat_mode == mode)
+            .first()
+        )
 
     if not db_chat:
-        new_chat_kwargs = {"chat_mode": mode, f"{tp}_id": component_id}
+        if feynman_level:
+            new_chat_kwargs = {
+                "chat_mode": feynman_level,
+                f"{tp}_id": component_id,
+            }
+        else:
+            new_chat_kwargs = {
+                "chat_mode": mode,
+                f"{tp}_id": component_id,
+            }
+
         db_chat = db_models.ChatHistory(**new_chat_kwargs)
         db.add(db_chat)
         db.commit()
@@ -56,9 +75,6 @@ async def get_chat(
             for m in (db_chat.messages or [])
         ]
     }
-
-
-embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
 
 @router.websocket("/stream")
@@ -79,7 +95,10 @@ async def websocket_chat(
 
         db_chat = get_or_create_chat_history(db, chat_input)
 
-        conversation, memory = initialize_chain(db_chat, chat_input.mode)
+        print(chat_input.feynman)
+        conversation, memory = initialize_chain(
+            db_chat, chat_input.mode, chat_input.feynman
+        )
 
         while True:
             user_input = await websocket.receive_text()
@@ -96,6 +115,7 @@ async def websocket_chat(
                 )
                 await websocket.close()
                 return
+            print("documents are found")
 
             doc_context = "\n\n".join([doc for doc in docs])
             doc_system_message = SystemMessage(
@@ -111,6 +131,7 @@ async def websocket_chat(
                 full_prompt_messages.append(note_system_message)
 
             messages = memory.chat_memory.messages
+            print(messages[0])
 
             full_prompt_messages.extend(messages)
             full_prompt_messages.append(HumanMessage(content=user_input))
@@ -150,6 +171,7 @@ async def clear_chat_history(
     component_id: int,
     tp: str,
     mode: str,
+    feynman_level: Optional[str] = None,
     _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -162,12 +184,20 @@ async def clear_chat_history(
         else db_models.ChatHistory.note_id
     )
 
-    chat = (
-        db.query(db_models.ChatHistory)
-        .filter(filter_field == component_id)
-        .filter(db_models.ChatHistory.chat_mode == mode)
-        .first()
-    )
+    if feynman_level:
+        chat = (
+            db.query(db_models.ChatHistory)
+            .filter(filter_field == component_id)
+            .filter(db_models.ChatHistory.chat_mode == feynman_level)
+            .first()
+        )
+    else:
+        chat = (
+            db.query(db_models.ChatHistory)
+            .filter(filter_field == component_id)
+            .filter(db_models.ChatHistory.chat_mode == mode)
+            .first()
+        )
 
     if not chat:
         raise HTTPException(status_code=404, detail="Chat history not found")

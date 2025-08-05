@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import List
+from typing import List, Optional
 
 
 class UserCreate(BaseModel):
@@ -34,6 +34,7 @@ class ChatInput(BaseModel):
     prompt: str
     tp: str
     mode: str
+    feynman: Optional[str] = None
 
 
 class ChatOutput(BaseModel):

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from dotenv import load_dotenv
 from models import db_models
 
@@ -66,7 +66,47 @@ _mode_prompts = {
 }
 
 
-def build_memory_from_db(messages: List[dict], mode: str) -> ConversationBufferMemory:
+_feynman_level_prompts = {
+    "feynman_child": (
+        "You are acting as a young child who has no prior knowledge of the topic. "
+        "You are naturally curious and easily confused by technical or abstract language.\n"
+        "- Ask very simple and naive questions.\n"
+        "- Struggle to understand jargon or complex sentences.\n"
+        "- Prefer relatable, concrete examples.\n"
+        "- Respond with curiosity, confusion, or awe.\n\n"
+        "Example questions:\n"
+        "- What does that word mean?\n"
+        "- Why is that important?\n"
+        "- What happens if I do that?"
+    ),
+    "feynman_student": (
+        "You are acting as a moderately knowledgeable student who understands the basics but seeks clarification.\n"
+        "- Ask thoughtful, specific questions about the topic.\n"
+        "- Probe for clearer explanations, examples, or connections.\n"
+        "- May partially understand, but need help deepening comprehension.\n\n"
+        "Example questions:\n"
+        "- Can you explain that part again with an example?\n"
+        "- How does that relate to what we learned before?\n"
+        "- Why does that happen?\n"
+        "- Is this always true or only in certain situations?"
+    ),
+    "feynman_prof": (
+        "You are acting as a highly knowledgeable professor familiar with the topic, playing devil’s advocate to stress-test the user’s explanation.\n"
+        "- Ask advanced, critical, and edge-case questions.\n"
+        "- Challenge assumptions or simplifications.\n"
+        "- Look for precision, logical consistency, and conceptual depth.\n\n"
+        "Example questions:\n"
+        "- What would happen if we changed this variable?\n"
+        "- How does this theory handle exceptions?\n"
+        "- Isn’t that a contradiction with X?\n"
+        "- What’s the underlying principle behind that explanation?"
+    ),
+}
+
+
+def build_memory_from_db(
+    messages: List[dict], mode: str, feynman_level: Optional[str] = None
+) -> ConversationBufferMemory:
     memory = ConversationBufferMemory(return_messages=True)
 
     memory.chat_memory.add_messages(
@@ -93,6 +133,11 @@ def build_memory_from_db(messages: List[dict], mode: str) -> ConversationBufferM
         ]
     )
 
+    if feynman_level:
+        memory.chat_memory.add_message(
+            SystemMessage(_feynman_level_prompts[feynman_level])
+        )
+
     for msg in messages:
         if msg["sender"] == "user":
             memory.chat_memory.add_message(HumanMessage(content=msg["text"]))
@@ -101,8 +146,10 @@ def build_memory_from_db(messages: List[dict], mode: str) -> ConversationBufferM
     return memory
 
 
-def initialize_chain(db_chat: db_models.ChatHistory, mode: str):
-    memory = build_memory_from_db(db_chat.messages or [], mode)
+def initialize_chain(
+    db_chat: db_models.ChatHistory, mode: str, feynman_level: Optional[str] = None
+):
+    memory = build_memory_from_db(db_chat.messages or [], mode, feynman_level)
 
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
