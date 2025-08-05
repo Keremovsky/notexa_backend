@@ -126,7 +126,8 @@ def build_memory_from_db(
                     "Editor: Act as a critical reviewer of the user’s written content. Give feedback on clarity, accuracy, structure, and style, while helping refine ideas.\n"
                     "Always base your responses on the user's provided materials, and tailor your output to the current mode to enhance the learning experience. "
                     "More detailed information about mode will be given when it is specified."
-                    "Reply user based on the language user is writing."
+                    "Respond to user based on the language user is using."
+                    "Respond in plain text only. Avoid any markdown formatting like backticks, stars, headers, or code blocks."
                 )
             ),
             SystemMessage(_mode_prompts[mode]),
