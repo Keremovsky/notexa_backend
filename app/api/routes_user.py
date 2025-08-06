@@ -71,8 +71,8 @@ def refresh_token(token_data: TokenRefreshRequest, db: Session = Depends(get_db)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    username = payload.get("sub")
-    user = db.query(db_models.User).filter_by(username=username).first()
+    user_id = payload.get("sub")
+    user = db.query(db_models.User).filter_by(id=user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
